@@ -29,7 +29,7 @@ public class AccountService {
 
     @Transactional
     public void deposit(Long accountId, BigDecimal amount) {
-        Account account = accountRepository.findById(accountId)
+        Account account = accountRepository.findByIdAndLock(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found: " + accountId));
 
         account.setBalance(account.getBalance().add(amount));
@@ -45,7 +45,7 @@ public class AccountService {
 
     @Transactional
     public void withdraw(Long accountId, BigDecimal amount) {
-        Account account = accountRepository.findById(accountId)
+        Account account = accountRepository.findByIdAndLock(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found: " + accountId));
 
         if (account.getBalance().compareTo(amount) < 0) {
