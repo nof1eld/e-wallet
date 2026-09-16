@@ -7,6 +7,8 @@ import com.example.e_wallet.repository.AccountRepository;
 import com.example.e_wallet.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.e_wallet.event.TransactionCompletedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 
@@ -15,10 +17,13 @@ public class TransferService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public TransferService(AccountRepository accountRepository, TransactionRepository transactionRepository) {
+
+    public TransferService(AccountRepository accountRepository, TransactionRepository transactionRepository, ApplicationEventPublisher eventPublisher) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -53,5 +58,7 @@ public class TransferService {
         ts.setAmount(amount);
         ts.setStatus(Transaction.TransactionStatus.SUCCESS);
         transactionRepository.save(ts);
+
+        eventPublisher.publishEvent(new TransactionCompletedEvent(ts));
     }
 }
