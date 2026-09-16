@@ -5,26 +5,21 @@ import com.example.e_wallet.entity.Account;
 import com.example.e_wallet.repository.AccountRepository;
 import org.springframework.stereotype.Service;
 import com.example.e_wallet.entity.Transaction;
+import com.example.e_wallet.exception.AccountBlockedException;
 import com.example.e_wallet.exception.InsufficientBalanceException;
-import com.example.e_wallet.repository.TransactionRepository;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
-import com.example.e_wallet.event.TransactionCompletedEvent;
-import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 public class AccountService {
 
     private final AccountRepository accountRepository;
-    private final TransactionRepository transactionRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final TransactionRecorder transactionRecorder; 
 
 
-    public AccountService(AccountRepository accountRepository, TransactionRepository transactionRepository, ApplicationEventPublisher eventPublisher) {
+    public AccountService(AccountRepository accountRepository, TransactionRecorder transactionRecorder) {
         this.accountRepository = accountRepository;
-        this.transactionRepository = transactionRepository;
-        this.eventPublisher = eventPublisher;
-
+        this.transactionRecorder = transactionRecorder;
     }
 
     public AccountResponse getAccount(Long id) {
@@ -38,17 +33,16 @@ public class AccountService {
         Account account = accountRepository.findByIdAndLock(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found: " + accountId));
 
+        if (account.getStatus() == Account.AccountStatus.BLOCKED) {
+            transactionRecorder.recordFailedTransaction(Transaction.TransactionType.DEPOSIT, null, accountId, amount);
+            throw new AccountBlockedException(accountId);
+        }
+
         account.setBalance(account.getBalance().add(amount));
         accountRepository.save(account);
 
-        Transaction ts = new Transaction();
-        ts.setType(Transaction.TransactionType.DEPOSIT);
-        ts.setDestinationAccountId(accountId);
-        ts.setAmount(amount);
-        ts.setStatus(Transaction.TransactionStatus.SUCCESS);
-        transactionRepository.save(ts);
-        //  send event to event listener
-        eventPublisher.publishEvent(new TransactionCompletedEvent(ts));
+        transactionRecorder.recordSucceededTransaction(Transaction.TransactionType.DEPOSIT, null, accountId, amount);
+
     }
 
     @Transactional
@@ -56,19 +50,19 @@ public class AccountService {
         Account account = accountRepository.findByIdAndLock(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found: " + accountId));
 
+        if (account.getStatus() == Account.AccountStatus.BLOCKED) {
+            transactionRecorder.recordFailedTransaction(Transaction.TransactionType.WITHDRAW, accountId, null, amount);
+            throw new AccountBlockedException(accountId);
+        }
+
         if (account.getBalance().compareTo(amount) < 0) {
+            transactionRecorder.recordFailedTransaction(Transaction.TransactionType.WITHDRAW, accountId, null, amount);
             throw new InsufficientBalanceException(accountId);
         }
 
         account.setBalance(account.getBalance().subtract(amount));
         accountRepository.save(account);
 
-        Transaction ts = new Transaction();
-        ts.setType(Transaction.TransactionType.WITHDRAW);
-        ts.setSourceAccountId(accountId);
-        ts.setAmount(amount);
-        ts.setStatus(Transaction.TransactionStatus.SUCCESS);
-        transactionRepository.save(ts);
-        eventPublisher.publishEvent(new TransactionCompletedEvent(ts));
+        transactionRecorder.recordSucceededTransaction(Transaction.TransactionType.WITHDRAW, accountId, null, amount);
     }
 }
