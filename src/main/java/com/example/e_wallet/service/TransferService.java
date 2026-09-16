@@ -2,13 +2,11 @@ package com.example.e_wallet.service;
 
 import com.example.e_wallet.entity.Account;
 import com.example.e_wallet.entity.Transaction;
+import com.example.e_wallet.exception.AccountBlockedException;
 import com.example.e_wallet.exception.InsufficientBalanceException;
 import com.example.e_wallet.repository.AccountRepository;
-import com.example.e_wallet.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.e_wallet.event.TransactionCompletedEvent;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 
@@ -16,14 +14,12 @@ import java.math.BigDecimal;
 public class TransferService {
 
     private final AccountRepository accountRepository;
-    private final TransactionRepository transactionRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final TransactionRecorder transactionRecorder; 
 
 
-    public TransferService(AccountRepository accountRepository, TransactionRepository transactionRepository, ApplicationEventPublisher eventPublisher) {
+    public TransferService(AccountRepository accountRepository, TransactionRecorder transactionRecorder) {
         this.accountRepository = accountRepository;
-        this.transactionRepository = transactionRepository;
-        this.eventPublisher = eventPublisher;
+        this.transactionRecorder = transactionRecorder;
     }
 
     @Transactional
@@ -38,11 +34,22 @@ public class TransferService {
         Account second = accountRepository.findByIdAndLock(secondToLock)
                 .orElseThrow(() -> new RuntimeException("Account not found: " + secondToLock));
 
+        if (first.getStatus() == Account.AccountStatus.BLOCKED) {
+            transactionRecorder.recordFailedTransaction(Transaction.TransactionType.TRANSFER, sourceId, destinationId, amount);
+            throw new AccountBlockedException(first.getId());
+        }
+        if (second.getStatus() == Account.AccountStatus.BLOCKED) {
+            transactionRecorder.recordFailedTransaction(Transaction.TransactionType.TRANSFER, sourceId, destinationId, amount);
+            throw new AccountBlockedException(second.getId());
+        }
+
         //  decide which of the accounts is source and which is destination
         Account source = sourceId.equals(first.getId()) ? first : second;
         Account destination = sourceId.equals(first.getId()) ? second : first;
 
         if (source.getBalance().compareTo(amount) < 0) {
+            transactionRecorder.recordFailedTransaction(Transaction.TransactionType.TRANSFER, sourceId, destinationId, amount);
+
             throw new InsufficientBalanceException(sourceId);
         }
 
@@ -51,14 +58,7 @@ public class TransferService {
         accountRepository.save(source);
         accountRepository.save(destination);
 
-        Transaction ts = new Transaction();
-        ts.setType(Transaction.TransactionType.TRANSFER);
-        ts.setSourceAccountId(sourceId);
-        ts.setDestinationAccountId(destinationId);
-        ts.setAmount(amount);
-        ts.setStatus(Transaction.TransactionStatus.SUCCESS);
-        transactionRepository.save(ts);
+        transactionRecorder.recordSucceededTransaction(Transaction.TransactionType.TRANSFER, sourceId, destinationId, amount);
 
-        eventPublisher.publishEvent(new TransactionCompletedEvent(ts));
     }
 }
