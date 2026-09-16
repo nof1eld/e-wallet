@@ -9,16 +9,22 @@ import com.example.e_wallet.exception.InsufficientBalanceException;
 import com.example.e_wallet.repository.TransactionRepository;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import com.example.e_wallet.event.TransactionCompletedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 public class AccountService {
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public AccountService(AccountRepository accountRepository, TransactionRepository transactionRepository) {
+
+    public AccountService(AccountRepository accountRepository, TransactionRepository transactionRepository, ApplicationEventPublisher eventPublisher) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
+        this.eventPublisher = eventPublisher;
+
     }
 
     public AccountResponse getAccount(Long id) {
@@ -41,6 +47,8 @@ public class AccountService {
         ts.setAmount(amount);
         ts.setStatus(Transaction.TransactionStatus.SUCCESS);
         transactionRepository.save(ts);
+        //  send event to event listener
+        eventPublisher.publishEvent(new TransactionCompletedEvent(ts));
     }
 
     @Transactional
@@ -61,5 +69,6 @@ public class AccountService {
         ts.setAmount(amount);
         ts.setStatus(Transaction.TransactionStatus.SUCCESS);
         transactionRepository.save(ts);
+        eventPublisher.publishEvent(new TransactionCompletedEvent(ts));
     }
 }
