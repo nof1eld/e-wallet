@@ -53,6 +53,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, message, req);
     }
 
+    // for when using the same ID in two arguments
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
+    }
+
     // anything not handled above still gets a clean JSON error
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleGeneric(RuntimeException ex, HttpServletRequest req) {
