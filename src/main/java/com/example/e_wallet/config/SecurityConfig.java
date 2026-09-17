@@ -34,9 +34,9 @@ public class SecurityConfig {
                 // session management is stateless, meaning no server-side sessions stored, so every time we need to check the user's token
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // always authorize auth endpoint (and h2-console (for dev))
+                // always authorize auth, swagger, and h2-console endpoints 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/h2-console/**").permitAll()
+                        .requestMatchers("/auth/**", "/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
