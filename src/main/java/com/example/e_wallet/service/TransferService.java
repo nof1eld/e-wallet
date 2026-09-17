@@ -3,6 +3,7 @@ package com.example.e_wallet.service;
 import com.example.e_wallet.entity.Account;
 import com.example.e_wallet.entity.Transaction;
 import com.example.e_wallet.exception.AccountBlockedException;
+import com.example.e_wallet.exception.AccountNotFoundException;
 import com.example.e_wallet.exception.InsufficientBalanceException;
 import com.example.e_wallet.repository.AccountRepository;
 import org.springframework.stereotype.Service;
@@ -30,9 +31,9 @@ public class TransferService {
         Long secondToLock = Math.max(sourceId, destinationId);
 
         Account first = accountRepository.findByIdAndLock(firstToLock)
-                .orElseThrow(() -> new RuntimeException("Account not found: " + firstToLock));
+                .orElseThrow(() -> new AccountNotFoundException(firstToLock));
         Account second = accountRepository.findByIdAndLock(secondToLock)
-                .orElseThrow(() -> new RuntimeException("Account not found: " + secondToLock));
+                .orElseThrow(() -> new AccountNotFoundException(secondToLock));
 
         if (first.getStatus() == Account.AccountStatus.BLOCKED) {
             transactionRecorder.recordFailedTransaction(Transaction.TransactionType.TRANSFER, sourceId, destinationId, amount);
