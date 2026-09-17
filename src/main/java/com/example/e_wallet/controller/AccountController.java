@@ -4,8 +4,10 @@ import com.example.e_wallet.dto.AccountResponse;
 import com.example.e_wallet.service.AccountService;
 import com.example.e_wallet.dto.DepositRequest;
 import com.example.e_wallet.dto.WithdrawRequest;
+import com.example.e_wallet.entity.Account;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +32,15 @@ public class AccountController {
     @GetMapping("/{id}")
     public AccountResponse getAccount(@PathVariable Long id) {
         return accountService.getAccount(id);
+    }
+
+    // we only check if requester is authenticated, no matter his role (user, admin)
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping
+    // the authentication object which we created in JWTAuthFilter gets automatically injected here
+    public AccountResponse createAccount(Authentication authentication) {
+        Account account = accountService.createAccount(authentication.getName());
+        return AccountResponse.convertFrom(account);
     }
 
     @PreAuthorize("@accountSecurity.canWrite(#id, authentication)")
