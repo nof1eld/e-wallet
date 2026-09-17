@@ -6,6 +6,7 @@ import com.example.e_wallet.repository.AccountRepository;
 import org.springframework.stereotype.Service;
 import com.example.e_wallet.entity.Transaction;
 import com.example.e_wallet.exception.AccountBlockedException;
+import com.example.e_wallet.exception.AccountNotFoundException;
 import com.example.e_wallet.exception.InsufficientBalanceException;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -24,14 +25,14 @@ public class AccountService {
 
     public AccountResponse getAccount(Long id) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Account not found: " + id));
+                .orElseThrow(() -> new AccountNotFoundException(id));
         return AccountResponse.convertFrom(account);
     }
 
     @Transactional
     public void deposit(Long accountId, BigDecimal amount) {
         Account account = accountRepository.findByIdAndLock(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found: " + accountId));
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
 
         if (account.getStatus() == Account.AccountStatus.BLOCKED) {
             transactionRecorder.recordFailedTransaction(Transaction.TransactionType.DEPOSIT, null, accountId, amount);
@@ -48,7 +49,7 @@ public class AccountService {
     @Transactional
     public void withdraw(Long accountId, BigDecimal amount) {
         Account account = accountRepository.findByIdAndLock(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found: " + accountId));
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
 
         if (account.getStatus() == Account.AccountStatus.BLOCKED) {
             transactionRecorder.recordFailedTransaction(Transaction.TransactionType.WITHDRAW, accountId, null, amount);
