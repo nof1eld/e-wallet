@@ -29,6 +29,14 @@ public class AccountService {
         return AccountResponse.convertFrom(account);
     }
 
+    public Account createAccount(String ownerUsername) {
+        Account account = new Account();
+        account.setOwnerUsername(ownerUsername);
+        account.setBalance(BigDecimal.ZERO);
+        account.setStatus(Account.AccountStatus.ACTIVE);
+        return accountRepository.save(account);
+    }
+
     @Transactional
     public void deposit(Long accountId, BigDecimal amount) {
         Account account = accountRepository.findByIdAndLock(accountId)
