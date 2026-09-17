@@ -12,7 +12,7 @@ import org.springframework.security.access.AccessDeniedException;
 import java.time.Instant;
 import java.util.stream.Collectors;
 
-import javax.security.auth.login.AccountNotFoundException;
+import com.example.e_wallet.exception.AccountNotFoundException;
 
 // apply to every controller in this project
 @RestControllerAdvice
