@@ -25,6 +25,10 @@ public class TransferService {
 
     @Transactional
     public void transfer(Long sourceId, Long destinationId, BigDecimal amount) {
+        
+        if (sourceId.equals(destinationId)) {
+            throw new IllegalArgumentException("Cannot transfer to the same account");
+        }
 
         //   I lock the account with lowest ID to avoid deadlock when A->B and B->A 
         Long firstToLock = Math.min(sourceId, destinationId);
