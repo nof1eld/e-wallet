@@ -68,6 +68,42 @@ curl -X POST http://localhost:8080/accounts \
 
 Admin accounts are not self-service; they're created by inserting a row with `role = ADMIN` directly into the `users` table.
 
+Promote an existing user to admin:
+
+```bash
+docker compose exec postgres psql -U user -d ewallet -c "UPDATE users SET role = 'ADMIN' WHERE username = 'admin';"
+```
+
+### Inspecting data in Docker
+
+You can run SQL directly against the Postgres container with `docker compose exec`:
+
+Accounts overview:
+
+```bash
+docker compose exec postgres psql -U user -d ewallet -c "SELECT id, owner_username, balance, status FROM accounts ORDER BY id;"
+```
+
+Transaction history:
+
+```bash
+docker compose exec postgres psql -U user -d ewallet -c "SELECT id, type, source_account_id, destination_account_id, amount, status, created_at FROM transactions ORDER BY created_at DESC;"
+```
+
+Audit log entries:
+
+```bash
+docker compose exec postgres psql -U user -d ewallet -c "SELECT id, transaction_id, transaction_type, source_account_id, destination_account_id, amount, status, recorded_at FROM audit_logs ORDER BY recorded_at DESC;"
+```
+
+All users:
+
+```bash
+docker compose exec postgres psql -U user -d ewallet -c "SELECT id, username, role FROM users ORDER BY id;"
+```
+
+These commands are useful when you want to inspect wallet balances or transaction history without opening a separate database client.
+
 ## Architecture
 
 Standard layered architecture:
